@@ -158,13 +158,27 @@ def load_data_from_drive():
         help="Google Drive 資料夾 ID"
     )
     
+    # 顯示認證狀態
+    try:
+        drive_sync_check = GoogleDriveSync()
+        if drive_sync_check.is_authenticated:
+            st.sidebar.success(f"✅ Google Drive 已連線（{drive_sync_check.auth_method}）")
+        else:
+            st.sidebar.error("❌ Google Drive 未認證")
+            if drive_sync_check.auth_error:
+                st.sidebar.markdown(drive_sync_check.auth_error)
+    except Exception:
+        pass
+
     if st.sidebar.button("🔄 同步資料", use_container_width=True):
         with st.spinner("正在同步資料..."):
             try:
                 drive_sync = GoogleDriveSync()
                 
-                if not drive_sync.service:
+                if not drive_sync.is_authenticated:
                     st.sidebar.error("❌ Google Drive 未認證")
+                    if drive_sync.auth_error:
+                        st.sidebar.markdown(drive_sync.auth_error)
                     return
                 
                 data_dir = Path('/home/ubuntu/sales_dashboard/data')
