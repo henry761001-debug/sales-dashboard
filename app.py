@@ -112,36 +112,35 @@ def load_data_from_upload():
     if st.sidebar.button("📥 載入資料", use_container_width=True):
         if boutique_file and beauty_file and target_file:
             try:
-                # 保存臨時檔案
-                temp_dir = Path('/home/ubuntu/sales_dashboard/temp_uploads')
-                temp_dir.mkdir(exist_ok=True)
-                
-                boutique_path = temp_dir / 'Boutique_Raw.xlsx'
-                beauty_path = temp_dir / 'Beauty_Raw.xlsx'
-                target_path = temp_dir / 'Target_2026.xlsx'
-                
-                with open(boutique_path, 'wb') as f:
-                    f.write(boutique_file.getbuffer())
-                with open(beauty_path, 'wb') as f:
-                    f.write(beauty_file.getbuffer())
-                with open(target_path, 'wb') as f:
-                    f.write(target_file.getbuffer())
-                
-                # 載入資料
-                success, errors = st.session_state.data_processor.load_data(
-                    str(boutique_path),
-                    str(beauty_path),
-                    str(target_path)
-                )
-                
+                import tempfile, io
+                # 使用系統臨時目錄，相容 Streamlit Cloud
+                with tempfile.TemporaryDirectory() as temp_dir:
+                    boutique_path = os.path.join(temp_dir, 'Boutique_Raw.xlsx')
+                    beauty_path   = os.path.join(temp_dir, 'Beauty_Raw.xlsx')
+                    target_path   = os.path.join(temp_dir, 'Target_2026.xlsx')
+
+                    with open(boutique_path, 'wb') as f:
+                        f.write(boutique_file.getbuffer())
+                    with open(beauty_path, 'wb') as f:
+                        f.write(beauty_file.getbuffer())
+                    with open(target_path, 'wb') as f:
+                        f.write(target_file.getbuffer())
+
+                    # 載入資料
+                    success, errors = st.session_state.data_processor.load_data(
+                        boutique_path,
+                        beauty_path,
+                        target_path
+                    )
+
                 st.session_state.data_loaded = success
                 st.session_state.validation_errors = errors
-                
+
                 if success:
                     st.sidebar.success("✅ 資料載入成功！")
                 else:
                     st.sidebar.warning("⚠️ 資料載入時出現警告")
-            
+
             except Exception as e:
                 st.sidebar.error(f"❌ 載入失敗: {str(e)}")
         else:
@@ -181,27 +180,27 @@ def load_data_from_drive():
                         st.sidebar.markdown(drive_sync.auth_error)
                     return
                 
-                data_dir = Path('/home/ubuntu/sales_dashboard/data')
-                data_dir.mkdir(exist_ok=True)
-                
+                import tempfile
+                data_dir = tempfile.mkdtemp()  # 使用系統臨時目錄，相容 Streamlit Cloud
+
                 file_names = [
                     'Boutique_Raw.xlsx',
                     'Beauty_Raw.xlsx',
                     'Target_2026.xlsx'
                 ]
-                
+
                 success, success_files, errors = drive_sync.sync_files(
                     folder_id,
                     file_names,
-                    str(data_dir)
+                    data_dir
                 )
-                
+
                 if success:
                     # 載入資料
                     load_success, load_errors = st.session_state.data_processor.load_data(
-                        str(data_dir / 'Boutique_Raw.xlsx'),
-                        str(data_dir / 'Beauty_Raw.xlsx'),
-                        str(data_dir / 'Target_2026.xlsx')
+                        os.path.join(data_dir, 'Boutique_Raw.xlsx'),
+                        os.path.join(data_dir, 'Beauty_Raw.xlsx'),
+                        os.path.join(data_dir, 'Target_2026.xlsx')
                     )
                     
                     st.session_state.data_loaded = load_success
